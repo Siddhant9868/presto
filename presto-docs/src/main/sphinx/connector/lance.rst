@@ -277,6 +277,20 @@ Drop a Lance table and delete all its data:
 
     DROP TABLE lance.default.my_table;
 
+ALTER TABLE
+^^^^^^^^^^^
+
+Add, drop, or rename columns of an existing Lance table. These are metadata-only
+operations that update the table schema without rewriting existing data files:
+
+.. code-block:: sql
+
+    ALTER TABLE lance.default.my_table ADD COLUMN tags VARCHAR;
+    ALTER TABLE lance.default.my_table DROP COLUMN score;
+    ALTER TABLE lance.default.my_table RENAME COLUMN name TO full_name;
+
+A newly added column is back-filled with ``NULL`` for existing rows.
+
 SHOW TABLES
 ^^^^^^^^^^^
 
@@ -316,9 +330,11 @@ Limitations
 
 * Only a single schema (``default``) is supported when ``lance.single-level-ns``
   is ``true``.
+* :doc:`/sql/alter-table` supports ``ADD COLUMN``, ``DROP COLUMN`` and
+  ``RENAME COLUMN``. Renaming a table, changing a column's type, and setting
+  table properties are not yet supported.
 * The following SQL statements are not supported:
 
-  * :doc:`/sql/alter-table`
   * :doc:`/sql/delete`
   * :doc:`/sql/update`
 

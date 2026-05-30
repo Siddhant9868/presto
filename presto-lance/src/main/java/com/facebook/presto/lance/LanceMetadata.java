@@ -269,6 +269,30 @@ public class LanceMetadata
         namespaceHolder.dropTable(lanceTable.getTableName());
     }
 
+    @Override
+    public void addColumn(ConnectorSession session, ConnectorTableHandle tableHandle, ColumnMetadata column)
+    {
+        LanceTableHandle lanceTable = (LanceTableHandle) tableHandle;
+        Schema arrowSchema = LancePageToArrowConverter.toArrowSchema(ImmutableList.of(column));
+        namespaceHolder.addColumns(lanceTable.getTableName(), arrowSchema.getFields());
+    }
+
+    @Override
+    public void dropColumn(ConnectorSession session, ConnectorTableHandle tableHandle, ColumnHandle column)
+    {
+        LanceTableHandle lanceTable = (LanceTableHandle) tableHandle;
+        LanceColumnHandle lanceColumn = (LanceColumnHandle) column;
+        namespaceHolder.dropColumns(lanceTable.getTableName(), ImmutableList.of(lanceColumn.getColumnName()));
+    }
+
+    @Override
+    public void renameColumn(ConnectorSession session, ConnectorTableHandle tableHandle, ColumnHandle source, String target)
+    {
+        LanceTableHandle lanceTable = (LanceTableHandle) tableHandle;
+        LanceColumnHandle lanceColumn = (LanceColumnHandle) source;
+        namespaceHolder.renameColumn(lanceTable.getTableName(), lanceColumn.getColumnName(), target);
+    }
+
     private List<org.lance.FragmentMetadata> collectFragments(Collection<Slice> fragments)
     {
         ImmutableList.Builder<org.lance.FragmentMetadata> allFragments = ImmutableList.builder();

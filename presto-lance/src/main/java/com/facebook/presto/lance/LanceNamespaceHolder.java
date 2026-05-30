@@ -18,11 +18,13 @@ import com.facebook.presto.spi.PrestoException;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.RemovalListener;
+import com.google.common.collect.ImmutableList;
 import com.google.common.io.MoreFiles;
 import com.google.common.io.RecursiveDeleteOption;
 import com.google.common.util.concurrent.UncheckedExecutionException;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.memory.RootAllocator;
+import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.arrow.vector.types.pojo.Schema;
 import org.lance.Dataset;
 import org.lance.Fragment;
@@ -30,6 +32,7 @@ import org.lance.FragmentMetadata;
 import org.lance.FragmentOperation;
 import org.lance.ReadOptions;
 import org.lance.WriteParams;
+import org.lance.schema.ColumnAlteration;
 
 import javax.inject.Inject;
 
@@ -268,6 +271,56 @@ public class LanceNamespaceHolder
             Dataset.commit(allocator, tablePath, appendOp, Optional.of(dataset.version()), Collections.emptyMap()).close();
         }
         // Invalidate all cache entries for this table path
+        invalidateByTablePath(tablePath);
+    }
+
+    /**
+     * Add columns to a table. New columns are appended to the schema and
+     * back-filled with nulls for existing rows. This is a metadata-only
+     * operation in Lance and does not rewrite existing data files.
+     */
+    public void addColumns(String tableName, List<Field> fields)
+    {
+        String tablePath = getTablePath(tableName);
+        try (Dataset dataset = Dataset.open(tablePath, readOptions)) {
+            dataset.addColumns(fields);
+        }
+        catch (Exception e) {
+            throw new PrestoException(LanceErrorCode.LANCE_ERROR, "Failed to add columns to table " + tableName, e);
+        }
+        invalidateByTablePath(tablePath);
+    }
+
+    /**
+     * Drop columns from a table. This is a metadata-only operation in Lance;
+     * the underlying data is removed lazily during compaction.
+     */
+    public void dropColumns(String tableName, List<String> columnNames)
+    {
+        String tablePath = getTablePath(tableName);
+        try (Dataset dataset = Dataset.open(tablePath, readOptions)) {
+            dataset.dropColumns(columnNames);
+        }
+        catch (Exception e) {
+            throw new PrestoException(LanceErrorCode.LANCE_ERROR, "Failed to drop columns from table " + tableName, e);
+        }
+        invalidateByTablePath(tablePath);
+    }
+
+    /**
+     * Rename a column in a table. This is a metadata-only operation that does
+     * not rewrite existing data files.
+     */
+    public void renameColumn(String tableName, String sourceColumn, String targetColumn)
+    {
+        String tablePath = getTablePath(tableName);
+        try (Dataset dataset = Dataset.open(tablePath, readOptions)) {
+            ColumnAlteration alteration = new ColumnAlteration.Builder(sourceColumn).rename(targetColumn).build();
+            dataset.alterColumns(ImmutableList.of(alteration));
+        }
+        catch (Exception e) {
+            throw new PrestoException(LanceErrorCode.LANCE_ERROR, "Failed to rename column in table " + tableName, e);
+        }
         invalidateByTablePath(tablePath);
     }
 
