@@ -1,0 +1,42 @@
+# TEMPORARY workflow for fork-only verification of the presto-lance module.
+# Builds presto-lance (+ its reactor dependencies) and runs only its tests.
+# Not intended for upstream; drop this file before opening the prestodb/presto PR.
+name: lance-ci (temp)
+
+on:
+  push:
+    branches: [lance-ci-test]
+  workflow_dispatch:
+
+env:
+  CONTINUOUS_INTEGRATION: true
+  MAVEN_OPTS: -Xmx1024M -XX:+ExitOnOutOfMemoryError
+  MAVEN_INSTALL_OPTS: -Xmx2G -XX:+ExitOnOutOfMemoryError
+  MAVEN_FAST_INSTALL: -B -V --quiet -T 1C -DskipTests -Dair.check.skip-all --no-transfer-progress -Dmaven.javadoc.skip=true
+  MAVEN_TEST: -B -Dair.check.skip-all -Dmaven.javadoc.skip=true --no-transfer-progress
+
+jobs:
+  lance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Free Disk Space
+        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be # v1.3.1
+        with:
+          tool-cache: true
+          swap-storage: false
+      - uses: actions/checkout@v4
+        with:
+          show-progress: false
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - name: Maven install (presto-lance + reactor deps, skip tests)
+        run: |
+          export MAVEN_OPTS="${MAVEN_INSTALL_OPTS}"
+          ./mvnw install ${MAVEN_FAST_INSTALL} -am -pl :presto-lance
+      - name: Run presto-lance tests
+        run: ./mvnw test ${MAVEN_TEST} -pl :presto-lance
