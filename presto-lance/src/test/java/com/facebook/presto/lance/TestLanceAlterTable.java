@@ -66,8 +66,8 @@ public class TestLanceAlterTable
         assertUpdate("CREATE TABLE test_lance_drop_column AS SELECT 1 a, 2 b, 3 c", 1);
 
         assertUpdate("ALTER TABLE test_lance_drop_column DROP COLUMN b");
-        assertQuery("SHOW COLUMNS FROM test_lance_drop_column", "VALUES ('a', 'integer', '', ''), ('c', 'integer', '', '')");
         assertQuery("SELECT * FROM test_lance_drop_column", "VALUES (1, 3)");
+        assertQueryFails("SELECT b FROM test_lance_drop_column", ".* Column 'b' cannot be resolved");
 
         assertUpdate("DROP TABLE test_lance_drop_column");
     }
@@ -78,8 +78,8 @@ public class TestLanceAlterTable
         assertUpdate("CREATE TABLE test_lance_rename_column AS SELECT 1 a, 2 b", 1);
 
         assertUpdate("ALTER TABLE test_lance_rename_column RENAME COLUMN b TO c");
-        assertQuery("SHOW COLUMNS FROM test_lance_rename_column", "VALUES ('a', 'integer', '', ''), ('c', 'integer', '', '')");
         assertQuery("SELECT a, c FROM test_lance_rename_column", "VALUES (1, 2)");
+        assertQueryFails("SELECT b FROM test_lance_rename_column", ".* Column 'b' cannot be resolved");
 
         assertUpdate("DROP TABLE test_lance_rename_column");
     }
